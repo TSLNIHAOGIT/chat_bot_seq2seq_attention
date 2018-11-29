@@ -7,7 +7,12 @@ import nltk
 import numpy as np
 import pickle
 import random
+import re
+import jieba
+#自定义词典要放在并行化程序之前，否则不起作用
+jieba.load_userdict('data_processed/self_define_dict.txt')
 
+#nltk.download()
 padToken, goToken, eosToken, unknownToken = 0, 1, 2, 3
 
 class Batch:
@@ -82,6 +87,32 @@ def getBatches(data, batch_size):
         batches.append(batch)
     return batches
 
+#添加停用词词典
+with open('data_processed/stopwords.txt') as stopwords:
+    stopwords_set=set()
+    for each in stopwords:
+        stopwords_set.add(each.strip())
+#print('stopwords_set',stopwords_set)
+TAG_DATE_PATTERN='\d{1,}年\d{1,}月\d{1,}日|\d{1,}年\d{1,}月|\d{1,}月\d{1,}日|\d{1,}年|\d{1,}月|\d{1,}日'
+TAG_NUMBER_PATTERN='\d{1,}'
+TAG_URL_PATTERN='[a-zA-z]+://[^\s]*'
+
+counts = 0
+def cut_process(input_str):
+    global counts
+    input_str=re.sub(TAG_DATE_PATTERN,'TAG_DATE',input_str)
+    input_str=re.sub(TAG_NUMBER_PATTERN,'TAG_NUMBER',input_str)
+    input_str=re.sub(TAG_URL_PATTERN,'TAG_URL',input_str)
+
+
+    str_split=jieba.cut(input_str.strip())
+    cleaned_str_split=[each for each in str_split if each not in stopwords_set]
+
+    if counts<3:
+        counts=counts+1
+ #       print('input', input_str)
+        print('cleaned_str_split',cleaned_str_split)
+    return cleaned_str_split
 def sentence2enco(sentence, word2id):
     '''
     测试的时候将用户输入的句子转化为可以直接feed进模型的数据，现将句子转化成id，然后调用createBatch处理
@@ -93,10 +124,13 @@ def sentence2enco(sentence, word2id):
     if sentence == '':
         return None
     #分词
-    tokens = nltk.word_tokenize(sentence)
+    tokens =cut_process(sentence)
+   # tokens = nltk.word_tokenize(sentence)
     if len(tokens) > 20:
-        return None
-    #将每个单词转化为id
+       # return None
+       #print('词汇数量较多超过20'）
+        print('词汇数量超出20') 
+   #将每个单词转化为id
     wordIds = []
     for token in tokens:
         wordIds.append(word2id.get(token, unknownToken))
