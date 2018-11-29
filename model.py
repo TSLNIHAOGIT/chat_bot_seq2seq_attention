@@ -160,7 +160,7 @@ class Seq2SeqModel():
         # =================================4, 保存模型
         self.saver = tf.train.Saver(tf.global_variables(),
         # self.saver = tf.train.Saver(tf.trainable_variables(),
-        # max_to_keep = 5
+         max_to_keep = 5
 
                                     )
 
