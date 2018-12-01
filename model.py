@@ -64,15 +64,30 @@ class Seq2SeqModel():
                                                                sequence_length=self.encoder_inputs_length,
                                                                dtype=tf.float32)
 
+            print('encoder_outputs.shape',encoder_outputs.shape,encoder_outputs[0].shape,encoder_outputs[1].shape)
+            # encoder_outputs.shape (?, ?, 1024) (?, 1024) (?, 1024)
+
+            print('encoder_state',encoder_state)
+
+            '''
+            self.num_layers=2，因此是两个LSTMStateTuple组成的tuple(),有多少层就有多少个
+            (   LSTMStateTuple(c=<tf.Tensor 'encoder/rnn/while/Exit_3:0' shape=(?, 1024) dtype=float32>, h=<tf.Tensor 'encoder/rnn/while/Exit_4:0' shape=(?, 1024) dtype=float32>), 
+                LSTMStateTuple(c=<tf.Tensor 'encoder/rnn/while/Exit_5:0' shape=(?, 1024) dtype=float32>, h=<tf.Tensor 'encoder/rnn/while/Exit_6:0' shape=(?, 1024) dtype=float32>)
+            )
+            '''
+
+
+
         # =================================3, 定义模型的decoder部分
         with tf.variable_scope('decoder'):
             encoder_inputs_length = self.encoder_inputs_length
-            if self.beam_search:
+            if self.beam_search:#预测的时候才使用，train时不使用
                 # 如果使用beam_search，则需要将encoder的输出进行tile_batch，其实就是复制beam_size份。
                 print("use beamsearch decoding..")
                 encoder_outputs = tf.contrib.seq2seq.tile_batch(encoder_outputs, multiplier=self.beam_size)
                 encoder_state = nest.map_structure(lambda s: tf.contrib.seq2seq.tile_batch(s, self.beam_size), encoder_state)
                 encoder_inputs_length = tf.contrib.seq2seq.tile_batch(self.encoder_inputs_length, multiplier=self.beam_size)
+                print('encoder_state nest',encoder_state)
 
 
             attention_mechanism = tf.contrib.seq2seq.BahdanauAttention(num_units=self.rnn_size, memory=encoder_outputs,
@@ -87,6 +102,22 @@ class Seq2SeqModel():
             # batch_size = self.batch_size
             #定义decoder阶段的初始化状态，直接使用encoder阶段的最后一个隐层状态进行赋值
             decoder_initial_state = decoder_cell.zero_state(batch_size=batch_size, dtype=tf.float32).clone(cell_state=encoder_state)
+
+            # decoder_initial_state = decoder_cell.zero_state(batch_size=batch_size, dtype=tf.float32).clone(
+            #     cell_state=tuple([encoder_state[-2],encoder_state[-1]]))
+            print('decoder_initial_state',decoder_initial_state)
+            '''
+            self.num_layers=5时就会有5个LSTMStateTuple，条件设置为2所有这里有两个
+            AttentionWrapperState(
+            cell_state=(
+            LSTMStateTuple(c=<tf.Tensor 'encoder/rnn/while/Exit_3/Identity:0' shape=(?, 1024) dtype=float32>, h=<tf.Tensor 'encoder/rnn/while/Exit_4/Identity:0' shape=(?, 1024) dtype=float32>), 
+            LSTMStateTuple(c=<tf.Tensor 'encoder/rnn/while/Exit_5/Identity:0' shape=(?, 1024) dtype=float32>, h=<tf.Tensor 'encoder/rnn/while/Exit_6/Identity:0' shape=(?, 1024) dtype=float32>)),
+             attention=<tf.Tensor 'decoder/AttentionWrapperZeroState/zeros_2/Identity:0' shape=(?, 1024) dtype=float32>, time=<tf.Tensor 'decoder/AttentionWrapperZeroState/zeros_1:0' shape=() dtype=int32>,
+             alignments=<tf.Tensor 'decoder/AttentionWrapperZeroState/zeros/Identity:0' shape=(?, ?) dtype=float32>, alignment_history=(), 
+             attention_state=<tf.Tensor 'decoder/AttentionWrapperZeroState/zeros_3/Identity:0' shape=(?, ?) dtype=float32>)
+
+            '''
+
             output_layer = tf.layers.Dense(self.vocab_size, kernel_initializer=tf.truncated_normal_initializer(mean=0.0, stddev=0.1))
 
             if self.mode == 'train':
