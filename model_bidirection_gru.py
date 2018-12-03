@@ -23,7 +23,7 @@ class Seq2SeqModel():
         def single_rnn_cell():
             # 创建单个cell，这里需要注意的是一定要使用一个single_rnn_cell的函数，不然直接把cell放在MultiRNNCell
             # 的列表中最终模型会发生错误
-            single_cell = tf.contrib.rnn.LSTMCell(self.rnn_size*2)#原来是没有乘以2的，似乎大小与state大小一样
+            single_cell = tf.contrib.rnn.GRUCell(self.rnn_size*2)#原来是没有乘以2的，似乎大小与state大小一样
             #添加dropout
             cell = tf.contrib.rnn.DropoutWrapper(single_cell, output_keep_prob=self.keep_prob_placeholder)
             return cell
@@ -36,8 +36,8 @@ class Seq2SeqModel():
     def bi_single_rnn_cell(self):
             # 创建单个cell，这里需要注意的是一定要使用一个single_rnn_cell的函数，不然直接把cell放在MultiRNNCell
             # 的列表中最终模型会发生错误
-            single_cell_fw = tf.contrib.rnn.LSTMCell(self.rnn_size)
-            single_cell_bw = tf.contrib.rnn.LSTMCell(self.rnn_size)
+            single_cell_fw = tf.contrib.rnn.GRUCell(self.rnn_size)
+            single_cell_bw = tf.contrib.rnn.GRUCell(self.rnn_size)
             #添加dropout
             cell_drop_fw = tf.contrib.rnn.DropoutWrapper(single_cell_fw, output_keep_prob=self.keep_prob_placeholder)
             cell_drop_bw = tf.contrib.rnn.DropoutWrapper(single_cell_bw, output_keep_prob=self.keep_prob_placeholder)
@@ -86,17 +86,19 @@ class Seq2SeqModel():
 
             embedding = tf.get_variable('embedding', [self.vocab_size, self.embedding_size])
             encoder_inputs_embedded = tf.nn.embedding_lookup(embedding, self.encoder_inputs)
-            _inputs = encoder_inputs_embedded
-            print('_inputs',_inputs)#Tensor("encoder/embedding_lookup/Identity:0", shape=(?, ?, 1024), dtype=float32)
 
-            if len(_inputs.get_shape().as_list()) != 3:
+            inputs = encoder_inputs_embedded
+            print('_inputs',inputs)#Tensor("encoder/embedding_lookup/Identity:0", shape=(?, ?, 1024), dtype=float32)
+
+            if len(inputs.get_shape().as_list()) != 3:
                 raise ValueError("the inputs must be 3-dimentional Tensor")
             all_layer_final_state=[]
             for index,_ in enumerate(range(self.num_layers)):
                 # 为什么在这加个variable_scope,被逼的,tf在rnn_cell的__call__中非要搞一个命名空间检查
                 # 恶心的很.如果不在这加的话,会报错的.
                  with tf.variable_scope(None, default_name="bidirectional-rnn"):
-                    print(index, '_inputs o', _inputs)
+                 # with tf.variable_scope('bidirectionalrnn'):
+                    print(index, '_inputs o', inputs)
                     '''
                     0 _inputs o Tensor("encoder/embedding_lookup/Identity:0", shape=(?, ?, 1024), dtype=float32)
                     1 _inputs o Tensor("encoder/concat:0", shape=(?, ?, 2048), dtype=float32)
@@ -110,7 +112,7 @@ class Seq2SeqModel():
 
                     initial_state_fw = rnn_cell_fw.zero_state(self.batch_size, dtype=tf.float32)
                     initial_state_bw = rnn_cell_bw.zero_state(self.batch_size, dtype=tf.float32)
-                    (output, state) = tf.nn.bidirectional_dynamic_rnn(rnn_cell_fw, rnn_cell_bw, _inputs, sequence_length=self.encoder_inputs_length,
+                    (output, state) = tf.nn.bidirectional_dynamic_rnn(rnn_cell_fw, rnn_cell_bw, inputs, sequence_length=self.encoder_inputs_length,
                                                                       initial_state_fw=initial_state_fw, initial_state_bw=initial_state_bw,
                                                                       dtype=tf.float32)
 
@@ -122,30 +124,12 @@ class Seq2SeqModel():
                     index,output 2 (<tf.Tensor 'encoder/bidirectional-rnn_2/bidirectional_rnn/fw/fw/transpose_1:0' shape=(?, ?, 1024) dtype=float32>, <tf.Tensor 'encoder/bidirectional-rnn_2/ReverseSequence:0' shape=(?, ?, 1024) dtype=float32>)
 
                     '''
-                    print('''type state[0].c''',type(state[0].c))
-                    #type state[0].c <class 'tensorflow.python.framework.ops.Tensor'>
-
-                    _inputs = tf.concat(output, 2)
-                    encoder_final_state_c = tf.concat(
-                        (state[0].c, state[1].c), 1)
-
-                    encoder_final_state_h = tf.concat(
-                        (state[0].h, state[1].h), 1)
-
-                    encoder_final_state = tf.nn.rnn_cell.LSTMStateTuple(
-                        c=encoder_final_state_c,
-                        h=encoder_final_state_h
-                    )
-                    all_layer_final_state.append(encoder_final_state)
-
-
-
 
 
                     print('index:{},state:{}'.format(index,state))
                     '''
-                    self.num_layers=3时
-                    index:0,state:(
+                    lstmcell:self.num_layers=3时
+                    index:0,state:(一个前向一个反向
                     LSTMStateTuple(c=<tf.Tensor 'encoder/bidirectional-rnn/bidirectional_rnn/fw/fw/while/Exit_3:0' shape=(?, 1024) dtype=float32>, h=<tf.Tensor 'encoder/bidirectional-rnn/bidirectional_rnn/fw/fw/while/Exit_4:0' shape=(?, 1024) dtype=float32>), 
                     LSTMStateTuple(c=<tf.Tensor 'encoder/bidirectional-rnn/bidirectional_rnn/bw/bw/while/Exit_3:0' shape=(?, 1024) dtype=float32>, h=<tf.Tensor 'encoder/bidirectional-rnn/bidirectional_rnn/bw/bw/while/Exit_4:0' shape=(?, 1024) dtype=float32>))
  
@@ -157,12 +141,41 @@ class Seq2SeqModel():
                     LSTMStateTuple(c=<tf.Tensor 'encoder/bidirectional-rnn_2/bidirectional_rnn/fw/fw/while/Exit_3:0' shape=(?, 1024) dtype=float32>, h=<tf.Tensor 'encoder/bidirectional-rnn_2/bidirectional_rnn/fw/fw/while/Exit_4:0' shape=(?, 1024) dtype=float32>), 
                     LSTMStateTuple(c=<tf.Tensor 'encoder/bidirectional-rnn_2/bidirectional_rnn/bw/bw/while/Exit_3:0' shape=(?, 1024) dtype=float32>, h=<tf.Tensor 'encoder/bidirectional-rnn_2/bidirectional_rnn/bw/bw/while/Exit_4:0' shape=(?, 1024) dtype=float32>))
 
+                    GRUcell:
+                    index:0,state:(
+                    <tf.Tensor 'encoder/bidirectional-rnn/bidirectional_rnn/fw/fw/while/Exit_3:0' shape=(?, 1024) dtype=float32>, 
+                    <tf.Tensor 'encoder/bidirectional-rnn/bidirectional_rnn/bw/bw/while/Exit_3:0' shape=(?, 1024) dtype=float32>)
+
                     
                     '''
 
+                    inputs = tf.concat(output, 2)
 
 
-            encoder_outputs =_inputs
+                    print('_inputs',inputs)#_inputs Tensor("encoder/bidirectional-rnn/concat:0", shape=(?, ?, 2048), dtype=float32)
+                    # encoder_final_state_c = tf.concat(
+                    #     (state[0].c, state[1].c), 1)
+                    #
+                    # encoder_final_state_h = tf.concat(
+                    #     (state[0].h, state[1].h), 1)
+                    #
+                    # encoder_final_state = tf.nn.rnn_cell.GRUStateTuple(
+                    #     c=encoder_final_state_c,
+                    #     h=encoder_final_state_h
+                    # )
+                    # with tf.variable_scope(None, default_name="bidirectional-rnn2"):
+
+                    print('state[0], state[1]',state[0], state[1])
+                    '''state[0], state[1]
+                     Tensor("encoder/bidirectionalrnn/bidirectional_rnn/fw/fw/while/Exit_3:0", shape=(?, 1024), dtype=float32) 
+                     Tensor("encoder/bidirectionalrnn/bidirectional_rnn/bw/bw/while/Exit_3:0", shape=(?, 1024), dtype=float32)
+'''
+                    encoder_final_state = tf.concat((state[0], state[1]), axis=1)
+
+                    print('encoder_final_state',encoder_final_state)
+                    all_layer_final_state.append(encoder_final_state)
+
+            encoder_outputs =inputs
             encoder_state=tuple(all_layer_final_state)#state#
 
             print('encoder_outputs',encoder_outputs)

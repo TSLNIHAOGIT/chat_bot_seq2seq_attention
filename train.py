@@ -2,7 +2,8 @@ import tensorflow as tf
 
 from data_helpers import loadDataset,getBatches, sentence2enco
 # from model import Seq2SeqModel
-from model_bidirection import Seq2SeqModel
+# from model_bidirection import Seq2SeqModel
+from model_bidirection_gru import Seq2SeqModel
 from tqdm import tqdm
 import math
 import os
@@ -10,11 +11,11 @@ import os
 # http://blog.csdn.net/leiting_imecas/article/details/72367937
 # tf定义了tf.app.flags，用于支持接受命令行传递参数，相当于接受argv。
 tf.app.flags.DEFINE_integer('rnn_size', 1024, 'Number of hidden units in each layer')
-tf.app.flags.DEFINE_integer('num_layers', 2, 'Number of layers in each encoder and decoder')
+tf.app.flags.DEFINE_integer('num_layers', 4, 'Number of layers in each encoder and decoder')
 tf.app.flags.DEFINE_integer('embedding_size', 1024, 'Embedding dimensions of encoder and decoder inputs')
 
 tf.app.flags.DEFINE_float('learning_rate', 0.0001, 'Learning rate')
-tf.app.flags.DEFINE_integer('batch_size', 128, 'Batch size')
+tf.app.flags.DEFINE_integer('batch_size', 10, 'Batch size')
 tf.app.flags.DEFINE_integer('numEpochs', 30, 'Maximum # of training epochs')
 tf.app.flags.DEFINE_integer('steps_per_checkpoint', 5, 'Save model checkpoint every this iteration')
 tf.app.flags.DEFINE_string('model_dir', 'model/', 'Path to save model checkpoints')
