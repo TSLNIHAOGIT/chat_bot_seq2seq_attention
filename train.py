@@ -2,8 +2,9 @@ import tensorflow as tf
 
 from data_helpers import loadDataset,getBatches, sentence2enco
 # from model import Seq2SeqModel
-# from model_bidirection import Seq2SeqModel
-from model_bidirection_gru import Seq2SeqModel
+from model_bidirection import Seq2SeqModel
+from model_bidirection_diff_layer_encoder_decoder import Seq2SeqModel
+# from model_bidirection_gru import Seq2SeqModel
 from tqdm import tqdm
 import math
 import os
@@ -15,7 +16,7 @@ tf.app.flags.DEFINE_integer('num_layers', 4, 'Number of layers in each encoder a
 tf.app.flags.DEFINE_integer('embedding_size', 1024, 'Embedding dimensions of encoder and decoder inputs')
 
 tf.app.flags.DEFINE_float('learning_rate', 0.0001, 'Learning rate')
-tf.app.flags.DEFINE_integer('batch_size', 10, 'Batch size')
+tf.app.flags.DEFINE_integer('batch_size', 5, 'Batch size')
 tf.app.flags.DEFINE_integer('numEpochs', 30, 'Maximum # of training epochs')
 tf.app.flags.DEFINE_integer('steps_per_checkpoint', 5, 'Save model checkpoint every this iteration')
 tf.app.flags.DEFINE_string('model_dir', 'model/', 'Path to save model checkpoints')

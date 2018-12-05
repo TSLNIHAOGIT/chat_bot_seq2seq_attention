@@ -23,7 +23,7 @@ class Seq2SeqModel():
         def single_rnn_cell():
             # 创建单个cell，这里需要注意的是一定要使用一个single_rnn_cell的函数，不然直接把cell放在MultiRNNCell
             # 的列表中最终模型会发生错误
-            single_cell = tf.contrib.rnn.LSTMCell(self.rnn_size*2)#原来(单层)是没有乘以2的，大小要与state中h或者c的第二个维度大小一样
+            single_cell = tf.contrib.rnn.LSTMCell(self.rnn_size)#*2)#原来(单层)是没有乘以2的，大小要与state中h或者c的第二个维度大小一样
             #添加dropout
             cell = tf.contrib.rnn.DropoutWrapper(single_cell, output_keep_prob=self.keep_prob_placeholder)
             return cell
@@ -95,7 +95,7 @@ class Seq2SeqModel():
             if len(_inputs.get_shape().as_list()) != 3:
                 raise ValueError("the inputs must be 3-dimentional Tensor")
             all_layer_final_state=[]
-            for index,_ in enumerate(range(self.num_layers)):
+            for index,_ in enumerate(range(self.num_layers*2)):#decoder端层数时encoder的二倍
                 # 为什么在这加个variable_scope,被逼的,tf在rnn_cell的__call__中非要搞一个命名空间检查
                 # 恶心的很.如果不在这加的话,会报错的.
                  with tf.variable_scope(None, default_name="bidirectional-rnn"):
@@ -229,8 +229,14 @@ class Seq2SeqModel():
             batch_size = self.batch_size if not self.beam_search else self.batch_size * self.beam_size
             # batch_size = self.batch_size
             #定义decoder阶段的初始化状态，直接使用encoder阶段的最后一个隐层状态进行赋值;decoder多层时每一层都要进行初始化，只是这里选择了用encoder层所有层最后时刻的状态进行初始化；估计换成其它的也可以
-            #decoder_initial_state的hun_hidden维度与h或者c的第二维度一样；因为clone(cell_state=encoder_state,shape=(?, 2048))所以hun_hidden也要为2048
-            decoder_initial_state = decoder_cell.zero_state(batch_size=batch_size, dtype=tf.float32).clone(cell_state=encoder_state)
+            #decoder_initial_state的num_hidden维度与h或者c的第二维度一样；因为clone(cell_state=encoder_state,shape=(?, 2048))所以num_hidden也要为2048
+            #不clone(cell_state=encoder_state,shape=(?, 2048))时，也即不用encoder端的state时，也就不需要保障num_hidden也要为2048了，
+
+            # decoder 和encoder端的层数可以不用，这时就不用encoder端的state了
+            decoder_initial_state = decoder_cell.zero_state(batch_size=batch_size, dtype=tf.float32)#.clone(cell_state=encoder_state)
+
+
+
             print('decoder_initial_state',decoder_initial_state)
             '''
             decoder_initial_state :4层的lstm,每一层都要初始化

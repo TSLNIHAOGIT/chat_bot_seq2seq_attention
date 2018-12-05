@@ -96,7 +96,7 @@ class Seq2SeqModel():
             for index,_ in enumerate(range(self.num_layers)):
                 # 为什么在这加个variable_scope,被逼的,tf在rnn_cell的__call__中非要搞一个命名空间检查
                 # 恶心的很.如果不在这加的话,会报错的.
-                 with tf.variable_scope(None, default_name="bidirectional-rnn"):
+                 with tf.variable_scope(None, default_name="bidirectional-rnn-gru"):
                  # with tf.variable_scope('bidirectionalrnn'):
                     print(index, '_inputs o', inputs)
                     '''
