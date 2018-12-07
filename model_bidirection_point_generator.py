@@ -242,8 +242,12 @@ class Seq2SeqModel():
               LSTMStateTuple(c=<tf.Tensor 'encoder/bidirectional-rnn_3/concat_1/Identity:0' shape=(?, 2048) dtype=float32>, h=<tf.Tensor 'encoder/bidirectional-rnn_3/concat_2/Identity:0' shape=(?, 2048) dtype=float32>)),
                attention=<tf.Tensor 'decoder/AttentionWrapperZeroState/zeros_2/Identity:0' shape=(?, 1024) dtype=float32>, time=<tf.Tensor 'decoder/AttentionWrapperZeroState/zeros_1:0' shape=() dtype=int32>, 
                alignments=<tf.Tensor 'decoder/AttentionWrapperZeroState/zeros/Identity:0' shape=(?, ?) dtype=float32>, alignment_history=(), attention_state=<tf.Tensor 'decoder/AttentionWrapperZeroState/zeros_3/Identity:0' shape=(?, ?) dtype=float32>)
+
             
             '''
+
+
+
             output_layer = tf.layers.Dense(self.vocab_size, kernel_initializer=tf.truncated_normal_initializer(mean=0.0, stddev=0.1))
 
             if self.mode == 'train':
@@ -266,9 +270,6 @@ class Seq2SeqModel():
                                                                     maximum_iterations=self.max_target_sequence_length)
                 # 根据输出计算loss和梯度，并定义进行更新的AdamOptimizer和train_op
                 self.decoder_logits_train = tf.identity(decoder_outputs.rnn_output)
-
-
-
                 self.decoder_predict_train = tf.argmax(self.decoder_logits_train, axis=-1, name='decoder_pred_train')
                 # 使用sequence_loss计算loss，这里需要传入之前定义的mask标志
                 self.loss = tf.contrib.seq2seq.sequence_loss(logits=self.decoder_logits_train,
