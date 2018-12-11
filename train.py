@@ -2,12 +2,14 @@ import tensorflow as tf
 
 from data_helpers import loadDataset,getBatches, sentence2enco
 # from model import Seq2SeqModel
-from model_bidirection import Seq2SeqModel
-from model_bidirection_diff_layer_encoder_decoder import Seq2SeqModel
+# from model_bidirection import Seq2SeqModel
+# from model_bidirection_diff_layer_encoder_decoder import Seq2SeqModel
 # from model_bidirection_gru import Seq2SeqModel
+from model_bidirection_copynet import Seq2SeqModel
 from tqdm import tqdm
 import math
 import os
+import numpy as np
 
 # http://blog.csdn.net/leiting_imecas/article/details/72367937
 # tf定义了tf.app.flags，用于支持接受命令行传递参数，相当于接受argv。
@@ -16,7 +18,7 @@ tf.app.flags.DEFINE_integer('num_layers', 4, 'Number of layers in each encoder a
 tf.app.flags.DEFINE_integer('embedding_size', 1024, 'Embedding dimensions of encoder and decoder inputs')
 
 tf.app.flags.DEFINE_float('learning_rate', 0.0001, 'Learning rate')
-tf.app.flags.DEFINE_integer('batch_size', 5, 'Batch size')
+tf.app.flags.DEFINE_integer('batch_size', 7, 'Batch size')
 tf.app.flags.DEFINE_integer('numEpochs', 30, 'Maximum # of training epochs')
 tf.app.flags.DEFINE_integer('steps_per_checkpoint', 5, 'Save model checkpoint every this iteration')
 tf.app.flags.DEFINE_string('model_dir', 'model/', 'Path to save model checkpoints')
@@ -48,6 +50,13 @@ with tf.Session() as sess:
     else:
         print('Created new model parameters..')
         sess.run(tf.global_variables_initializer())
+    for each in tf.all_variables():
+        print('each var',each)
+    #
+    # for n in tf.get_default_graph().as_graph_def().node:
+    #     print('n.name',n.name)
+
+
 
     # current_step = 0
     summary_writer = tf.summary.FileWriter(FLAGS.model_dir, graph=sess.graph)
@@ -57,6 +66,8 @@ with tf.Session() as sess:
         # Tqdm 是一个快速，可扩展的Python进度条，可以在 Python 长循环中添加一个进度提示信息，用户只需要封装任意的迭代器 tqdm(iterator)。
         for nextBatch in tqdm(batches, desc="Training"):
             loss, summary,current_step = model.train(sess, nextBatch)
+
+            print('loss',loss)
             # current_step += 1
             # 每多少步进行一次保存
             if current_step % FLAGS.steps_per_checkpoint == 0:

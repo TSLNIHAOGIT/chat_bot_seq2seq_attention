@@ -1,5 +1,8 @@
 import tensorflow as tf
+from tensorflow.contrib.seq2seq import BahdanauAttention
 from tensorflow.python.util import nest
+import seq2seq
+import numpy as np
 
 
 class Seq2SeqModel():
@@ -18,6 +21,7 @@ class Seq2SeqModel():
         self.max_gradient_norm = max_gradient_norm
         #执行模型构建部分的代码
         self.build_model()
+
 
     def _create_rnn_cell(self):
         def single_rnn_cell():
@@ -62,7 +66,29 @@ class Seq2SeqModel():
         #  [True, True, True, False, False],
         #  [True, True, False, False, False]]
         self.max_target_sequence_length = tf.reduce_max(self.decoder_targets_length, name='max_target_len')
+        self.max_encoder_sequence_lenth=tf.reduce_max(self.encoder_inputs_length, name='max_encoder_len')
         self.mask = tf.sequence_mask(self.decoder_targets_length, self.max_target_sequence_length, dtype=tf.float32, name='masks')
+
+        self.config = {
+            # "dataset_filepath": "train.txt",
+            "vocab_size": self.vocab_size,
+            # "batch_size": 100,
+            # "embedding_size": 300,
+            # "encoder_hidden_size": 256,
+            # "decoder_hidden_size": 280,
+
+            "encoder_max_seq_len": self.max_encoder_sequence_lenth,
+            # "decoder_max_seq_len": self.max_target_sequence_length,
+
+            # "learning_rate": 1e-2,
+            # "max_grad_norm": 5,
+            # "max_batchid": 1000,
+            # "save_freq": 10,
+            # "eval_freq": 1,
+            # "infer_freq": 1,
+            # "nothing": 0
+        }
+
 
         ##=================================2, 定义模型的encoder部分
         # with tf.variable_scope('encoder'):
@@ -217,13 +243,28 @@ class Seq2SeqModel():
             print('decoder encoder_outputs',encoder_outputs)
             #decoder encoder_outputs Tensor("encoder/bidirectional-rnn_1/concat:0", shape=(?, ?, 2048), dtype=float32)
 
-            attention_mechanism = tf.contrib.seq2seq.BahdanauAttention(num_units=self.rnn_size, memory=encoder_outputs,
+            attention_mechanism =seq2seq.BahdanauAttention(num_units=self.rnn_size, memory=encoder_outputs,
                                                                      memory_sequence_length=encoder_inputs_length)
+
+            # attention_mechanism = seq2seq.LuongAttention(
+            #     num_units=self.rnn_size, memory=encoder_outputs,
+            #     memory_sequence_length=encoder_inputs_length)
             print('attention_mechanism',attention_mechanism)
+
             #attention_mechanism = tf.contrib.seq2seq.LuongAttention(num_units=self.rnn_size, memory=encoder_outputs, memory_sequence_length=encoder_inputs_length)
             # 定义decoder阶段要是用的LSTMCell，然后为其封装attention wrapper
             decoder_cell = self._create_rnn_cell()#维度要与状态维度一致
-            decoder_cell = tf.contrib.seq2seq.AttentionWrapper(cell=decoder_cell, attention_mechanism=attention_mechanism,
+
+            # decoder_cell = tf.nn.rnn_cell.BasicLSTMCell(self.rnn_size)
+            '''cell,
+               attention_mechanism,
+               attention_layer_size=None,
+               alignment_history=False,
+               cell_input_fn=None,
+               output_attention=True,
+               initial_cell_state=None,
+               name=None):'''
+            decoder_cell = seq2seq.AttentionWrapper(cell=decoder_cell, attention_mechanism=attention_mechanism,
                                                                attention_layer_size=self.rnn_size, name='Attention_Wrapper')
             #如果使用beam_seach则batch_size = self.batch_size * self.beam_size。因为之前已经复制过一次
             batch_size = self.batch_size if not self.beam_search else self.batch_size * self.beam_size
@@ -249,6 +290,9 @@ class Seq2SeqModel():
 
 
             output_layer = tf.layers.Dense(self.vocab_size, kernel_initializer=tf.truncated_normal_initializer(mean=0.0, stddev=0.1))
+            print('self.vocab_size',self.vocab_size,tf.truncated_normal_initializer(mean=0.0, stddev=0.1))
+            '''self.vocab_size 15829 <tensorflow.python.ops.init_ops.TruncatedNormal object at 0x126329ba8>'''
+            print('main flow output_layer',output_layer)
 
             if self.mode == 'train':
                 # 定义decoder阶段的输入，其实就是在decoder的target开始处添加一个<go>,并删除结尾处的<end>,并进行embedding。
@@ -256,24 +300,59 @@ class Seq2SeqModel():
                 ending = tf.strided_slice(self.decoder_targets, [0, 0], [self.batch_size, -1], [1, 1])
                 decoder_input = tf.concat([tf.fill([self.batch_size, 1], self.word_to_idx['<go>']), ending], 1)
                 decoder_inputs_embedded = tf.nn.embedding_lookup(embedding, decoder_input)
-                #训练阶段，使用TrainingHelper+BasicDecoder的组合，这一般是固定的，当然也可以自己定义Helper类，实现自己的功能
-                training_helper = tf.contrib.seq2seq.TrainingHelper(inputs=decoder_inputs_embedded,
-                                                                    sequence_length=self.decoder_targets_length,
-                                                                    time_major=False, name='training_helper')
-                training_decoder = tf.contrib.seq2seq.BasicDecoder(cell=decoder_cell, helper=training_helper,
-                                                                   initial_state=decoder_initial_state, output_layer=output_layer)
-                #调用dynamic_decode进行解码，decoder_outputs是一个namedtuple，里面包含两项(rnn_outputs, sample_id)
-                # rnn_output: [batch_size, decoder_targets_length, vocab_size]，保存decode每个时刻每个单词的概率，可以用来计算loss
-                # sample_id: [batch_size], tf.int32，保存最终的编码结果。可以表示最后的答案
-                decoder_outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder=training_decoder,
-                                                                          impute_finished=True,
+
+                # #训练阶段，使用TrainingHelper+BasicDecoder的组合，这一般是固定的，当然也可以自己定义Helper类，实现自己的功能
+                # training_helper = tf.contrib.seq2seq.TrainingHelper(inputs=decoder_inputs_embedded,
+                #                                                     sequence_length=self.decoder_targets_length,
+                #                                                     time_major=False, name='training_helper')
+                # training_decoder = tf.contrib.seq2seq.BasicDecoder(cell=decoder_cell, helper=training_helper,
+                #                                                    initial_state=decoder_initial_state, output_layer=output_layer)
+                # #调用dynamic_decode进行解码，decoder_outputs是一个namedtuple，里面包含两项(rnn_outputs, sample_id)
+                # # rnn_output: [batch_size, decoder_targets_length, vocab_size]，保存decode每个时刻每个单词的概率，可以用来计算loss
+                # # sample_id: [batch_size], tf.int32，保存最终的编码结果。可以表示最后的答案
+                # decoder_outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder=training_decoder,
+                #                                                           impute_finished=True,
+                #                                                     maximum_iterations=self.max_target_sequence_length)
+
+                # train or eval mode
+                print('train or eval mode')
+                helper = seq2seq.CopyNetTrainingHelper(decoder_inputs_embedded, self.encoder_inputs,
+                                                       self.decoder_targets_length,
+                                                       time_major=False)
+
+                decoder = seq2seq.CopyNetDecoder(config=self.config, cell=decoder_cell, helper=helper,
+                                                 initial_state=decoder_initial_state,
+                                                 encoder_outputs=encoder_outputs,
+                                                 output_layer=output_layer)
+                decoder_outputs, final_state, seq_lens = seq2seq.dynamic_decode(decoder=decoder,
+                                                                              impute_finished=True,
                                                                     maximum_iterations=self.max_target_sequence_length)
+
+
+
+                logits = decoder_outputs.rnn_output
+
                 # 根据输出计算loss和梯度，并定义进行更新的AdamOptimizer和train_op
-                self.decoder_logits_train = tf.identity(decoder_outputs.rnn_output)
+                self.decoder_logits_train = tf.identity(logits)
+
                 self.decoder_predict_train = tf.argmax(self.decoder_logits_train, axis=-1, name='decoder_pred_train')
                 # 使用sequence_loss计算loss，这里需要传入之前定义的mask标志
-                self.loss = tf.contrib.seq2seq.sequence_loss(logits=self.decoder_logits_train,
+                #logits是未经softmax的值
+                self.loss = seq2seq.sequence_loss(logits=self.decoder_logits_train,
                                                              targets=self.decoder_targets, weights=self.mask)
+
+                print('self.loss',self.loss)
+
+                # # loss
+                # crossent = tf.nn.sparse_softmax_cross_entropy_with_logits(
+                #     labels=self.decoder_targets, logits=logits)
+                # # max_seq_len = logits.shape[1].value
+                # target_weights = self.mask
+                # self.loss = tf.reduce_sum(crossent * target_weights / tf.to_float(
+                #     self.batch_size))
+
+
+
 
                 # Training summary for the current batch_loss
                 tf.summary.scalar('loss', self.loss)
@@ -298,12 +377,12 @@ class Seq2SeqModel():
                                                                              beam_width=self.beam_size,
                                                                              output_layer=output_layer)
                 else:
-                    decoding_helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(embedding=embedding,
+                    decoding_helper = seq2seq.GreedyEmbeddingHelper(embedding=embedding,
                                                                                start_tokens=start_tokens, end_token=end_token)
-                    inference_decoder = tf.contrib.seq2seq.BasicDecoder(cell=decoder_cell, helper=decoding_helper,
+                    inference_decoder = seq2seq.BasicDecoder(cell=decoder_cell, helper=decoding_helper,
                                                                         initial_state=decoder_initial_state,
                                                                         output_layer=output_layer)
-                decoder_outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder=inference_decoder,
+                decoder_outputs, _, _ = seq2seq.dynamic_decode(decoder=inference_decoder,
                                                                 maximum_iterations=10)
                 # 调用dynamic_decode进行解码，decoder_outputs是一个namedtuple，
                 # 对于不使用beam_search的时候，它里面包含两项(rnn_outputs, sample_id)
@@ -333,6 +412,13 @@ class Seq2SeqModel():
                       self.decoder_targets_length: batch.decoder_targets_length,
                       self.keep_prob_placeholder: 0.5,
                       self.batch_size: len(batch.encoder_inputs)}
+        # print('feed_dict',feed_dict)
+        print('batch.encoder_inputs',np.array(batch.encoder_inputs).shape)
+        print('batch.decoder_targets',np.array(batch.decoder_targets).shape)
+        print('len(batch.encoder_inputs)',len(batch.encoder_inputs))
+
+
+        print('self.loss',sess.run(self.loss,feed_dict=feed_dict))
         _, loss, summary,step = sess.run([self.train_op, self.loss, self.summary_op,self.global_step], feed_dict=feed_dict)
         return loss, summary,step
 
@@ -396,4 +482,24 @@ Training:   6%|▋         | 14/222 [01:39<24:34,  7.09s/it]----- Step 15 -- Los
 Training:   9%|▊         | 19/222 [02:11<23:23,  6.91s/it]----- Step 20 -- Loss 9.01 -- Perplexity 8210.38
 Training:  11%|█         | 24/222 [02:38<21:47,  6.60s/it]----- Step 25 -- Loss 9.45 -- Perplexity 12756.64
 
+'''
+
+'''
+but received: [5,15842] vs. [5,15900]
+
+but received: [5,15845] vs. [5,15898]
+
+but received: [5,15843] vs. [5,15902]
+
+
+but received: [5,15844] vs. [5,15895]
+
+#不shuffle,下面的错误就相同了，shuffle之后，可能是每条数据
+batch_size=5
+but received: [5,15841] vs. [5,15897]
+but received: [5,15841] vs. [5,15897]
+
+batch_size=7
+but received: [7,15841] vs. [7,15897]
+but received: [7,15929] vs. [7,15897]
 '''

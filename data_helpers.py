@@ -75,7 +75,10 @@ def getBatches(data, batch_size):
     :return: 列表，每个元素都是一个batch的样本数据，可直接传入feed_dict进行训练
     '''
     #每个epoch之前都要进行样本的shuffle
-    random.shuffle(data)
+    # random.shuffle(data)
+    # 先不shauffle看结果
+
+    #
     batches = []
     data_len = len(data)
     def genNextSamples():
