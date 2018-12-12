@@ -176,6 +176,8 @@ class CopyNetDecoder(BasicDecoder):
         assert isinstance(helper, helper_py.CopyNetTrainingHelper)
         self.encoder_outputs = encoder_outputs
         encoder_hidden_size = self.encoder_outputs.shape[-1].value
+
+        #权重，需要训练的变量
         self.copy_weight = tf.get_variable('copy_weight', 
                                 [encoder_hidden_size, cell.output_size])
         super(CopyNetDecoder, self).__init__(cell, helper, initial_state, 
@@ -255,6 +257,8 @@ class CopyNetDecoder(BasicDecoder):
         """
         with ops.name_scope(name, "BasicDecoderStep", (time, inputs, state)):
             print('inputs',inputs)#inputs Tensor("decoder/decoder/while/Identity_14:0", shape=(?, 1024), dtype=float32)
+
+            #这里时AttentionWrapper的输出（使用attention时为）attention, next_state
             cell_outputs, cell_state = self._cell(inputs, state)
             print('cell_outputs',cell_outputs)#cell_outputs Tensor("decoder/decoder/while/BasicDecoderStep/decoder/Attention_Wrapper/concat_2:0", shape=(?, 1024), dtype=float32)
             generate_scores = self._output_layer(cell_outputs)#
@@ -271,7 +275,7 @@ class CopyNetDecoder(BasicDecoder):
             copy_scores = tf.nn.tanh(copy_scores)
             copy_scores = tf.reduce_sum(copy_scores * expand_cell_outputs, 2)
 
-            print('copy_scores 1',copy_scores)
+            print('copy_scores_shape',copy_scores.shape,copy_scores)
 
             #词汇10000时，下面这一步已经开始报错
             mix_scores = self._mix(generate_scores, copy_scores)
