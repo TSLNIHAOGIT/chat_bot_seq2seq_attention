@@ -19,6 +19,7 @@ FLAGS = tf.app.flags.FLAGS
 
 data_path = 'data/dataset-cornell-length10-filter1-vocabSize40000.pkl'
 word2id, id2word, trainingSamples = loadDataset(data_path)
+#预测时用到id2word
 print('loadDataset')
 # print(word2id)
 # '''{'<pad>': 0, '<go>': 1, '<eos>': 2, '<unknown>': 3, 'can': 4, 'we': 5, 'make': 6,'''
