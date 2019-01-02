@@ -41,17 +41,49 @@ def loadDataset(filename):
     return word2id, id2word, trainingSamples
 
 def createBatch(samples):
+
+
+    #要在一开始就把samples的eos结束符加上，后面加后出问题，暂时没有找到是什么问题
+    #这样虽然能运行，其实也有问题，就是将eos也作为一个正常字符使用了
+    # trainingSamples=[]
+    # for sample in samples:
+    #      line = [sample[0], sample[1]+[eosToken]]
+    #      trainingSamples.append(line)
+    #
+    # samples=trainingSamples
+
+
+
     '''
     根据给出的samples（就是一个batch的数据），进行padding并构造成placeholder所需要的数据形式
     :param samples: 一个batch的样本数据，列表，每个元素都是[question， answer]的形式，id
     :return: 处理完之后可以直接传入feed_dict的数据格式
     '''
     batch = Batch()
+
+
     batch.encoder_inputs_length = [len(sample[0]) for sample in samples]
-    batch.decoder_targets_length = [len(sample[1]) for sample in samples]
+
+    #最大长度造成的
+    batch.decoder_targets_length = [len(sample[1])+1 for sample in samples]#logits.shape first dim decided by batch.decoder_targets_length
 
     max_source_length = max(batch.encoder_inputs_length)
     max_target_length = max(batch.decoder_targets_length)
+    # print('max_target_length',max_target_length)
+    '''
+    max_target_length 51
+    max_target_length 34
+    max_target_length 53
+    max_target_length 42
+    max_target_length 38
+    max_target_length 42
+    max_target_length 46
+    max_target_length 36
+    max_target_length 49
+    max_target_length 32
+    
+    
+    '''
 
     for sample in samples:
         #将source进行反序并PAD值本batch的最大长度
@@ -62,10 +94,20 @@ def createBatch(samples):
         #将target进行PAD，并添加END符号
         #下面缺少添加END符号,所以要添加end符号
         # target = sample[1]
-        target = sample[1] + [eosToken]
-        #max_target_length是sample[1]的最大长度，但是现在加了一个end符号，所以最大长度也要加1
-        pad = [padToken] * (max_target_length +1- len(target))
-        batch.decoder_targets.append(target + pad)
+        # pad = [padToken] * (max_target_length - len(target))
+        # batch.decoder_targets.append(target + pad)
+
+        # # 方法1添加[eosToken]
+        # target = sample[1] + [eosToken]
+        # #max_target_length是sample[1]的最大长度，但是现在加了一个end符号，所以最大长度也要加1
+        # pad = [padToken] * (max_target_length +1- len(target))#len(target)比原来大了1
+        # batch.decoder_targets.append(target + pad)
+
+
+        # #方法2添加[eosToken]
+        target = sample[1] #+ [eosToken]
+        pad = [padToken] * (max_target_length - len(target)-1)#
+        batch.decoder_targets.append(target +[eosToken]+ pad)
         #batch.target_inputs.append([goToken] + target + pad[:-1])
 
     return batch
@@ -79,7 +121,8 @@ def getBatches(data, batch_size):
     :return: 列表，每个元素都是一个batch的样本数据，可直接传入feed_dict进行训练
     '''
     #每个epoch之前都要进行样本的shuffle
-    random.shuffle(data)
+    #调试时将shuffle关掉
+    # random.shuffle(data)
     # 先不shauffle看结果
 
     #

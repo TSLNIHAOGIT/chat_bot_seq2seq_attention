@@ -42,12 +42,23 @@ class Seq2SeqModel():
 
         self.decoder_targets = tf.placeholder(tf.int32, [None, None], name='decoder_targets')
         self.decoder_targets_length = tf.placeholder(tf.int32, [None], name='decoder_targets_length')
+
+        #########################
+        # self.decoder_targets_length=self.decoder_targets_length+tf.convert_to_tensor(1)
         # 根据目标序列长度，选出其中最大值，然后使用该值构建序列长度的mask标志。用一个sequence_mask的例子来说明起作用
         #  tf.sequence_mask([1, 3, 2], 5)
         #  [[True, False, False, False, False],
         #  [True, True, True, False, False],
         #  [True, True, False, False, False]]
+        '''tf.convert_to_tensor(
+    value,'''
         self.max_target_sequence_length = tf.reduce_max(self.decoder_targets_length, name='max_target_len')
+
+        ########################
+        # self.max_target_sequence_length=self.max_target_sequence_length+tf.convert_to_tensor(1)
+
+
+
         self.mask = tf.sequence_mask(self.decoder_targets_length, self.max_target_sequence_length, dtype=tf.float32, name='masks')
 
         #=================================2, 定义模型的encoder部分
@@ -128,22 +139,33 @@ class Seq2SeqModel():
                 #以tf.strided_slice(input, [0,0,0], [2,2,2], [1,2,1])调用为例,start = [0,0,0] , end = [2,2,2], stride = [1,2,1],求一个[start, end)的一个片段,注意end为开区间
                 ending = tf.strided_slice(self.decoder_targets, [0, 0], [self.batch_size, -1], [1, 1])
                 decoder_input = tf.concat([tf.fill([self.batch_size, 1], self.word_to_idx['<go>']), ending], 1)
-                decoder_inputs_embedded = tf.nn.embedding_lookup(embedding, decoder_input)
+                print('decoder_input',decoder_input.shape)#(7, 52)
+                # self.decoder_input_=decoder_input
+
+                decoder_inputs_embedded = tf.nn.embedding_lookup(embedding, decoder_input)#(7, 52, 1024)
+                # self.decoder_input_=decoder_inputs_embedded
                 #训练阶段，使用TrainingHelper+BasicDecoder的组合，这一般是固定的，当然也可以自己定义Helper类，实现自己的功能
                 training_helper = tf.contrib.seq2seq.TrainingHelper(inputs=decoder_inputs_embedded,
                                                                     sequence_length=self.decoder_targets_length,
                                                                     time_major=False, name='training_helper')
                 training_decoder = tf.contrib.seq2seq.BasicDecoder(cell=decoder_cell, helper=training_helper,
                                                                    initial_state=decoder_initial_state, output_layer=output_layer)
+
+
                 #调用dynamic_decode进行解码，decoder_outputs是一个namedtuple，里面包含两项(rnn_outputs, sample_id)
                 # rnn_output: [batch_size, decoder_targets_length, vocab_size]，保存decode每个时刻每个单词的概率，可以用来计算loss
                 # sample_id: [batch_size], tf.int32，保存最终的编码结果。可以表示最后的答案
                 decoder_outputs, _, _ = tf.contrib.seq2seq.dynamic_decode(decoder=training_decoder,
                                                                           impute_finished=True,
-                                                                    maximum_iterations=self.max_target_sequence_length)
+                                                                    maximum_iterations=self.max_target_sequence_length
+                                                                          )
+                self.decoder_input_=decoder_outputs.rnn_output#(7, 51, 15187)
                 # 根据输出计算loss和梯度，并定义进行更新的AdamOptimizer和train_op
                 self.decoder_logits_train = tf.identity(decoder_outputs.rnn_output)
                 self.decoder_predict_train = tf.argmax(self.decoder_logits_train, axis=-1, name='decoder_pred_train')
+
+                print('logits',self.decoder_logits_train)#(7, 51, 15187)
+                print('targets',self.decoder_targets)
                 # 使用sequence_loss计算loss，这里需要传入之前定义的mask标志
                 self.loss = tf.contrib.seq2seq.sequence_loss(logits=self.decoder_logits_train,
                                                              targets=self.decoder_targets, weights=self.mask)
@@ -210,7 +232,12 @@ class Seq2SeqModel():
                       self.keep_prob_placeholder: 0.5,
                       self.batch_size: len(batch.encoder_inputs)}
         _, loss, summary,step = sess.run([self.train_op, self.loss, self.summary_op,self.global_step], feed_dict=feed_dict)
-        return loss, summary,step
+
+        # logist_,label_,decoder_inputs_=sess.run([self.decoder_logits_train,self.decoder_targets,self.decoder_input_], feed_dict=feed_dict)
+
+
+        return loss, summary,step,
+        # return  logist_,label_,decoder_inputs_
 
     def eval(self, sess, batch):
         # 对于eval阶段，不需要反向传播，所以只执行self.loss, self.summary_op两个op，并传入相应的数据
