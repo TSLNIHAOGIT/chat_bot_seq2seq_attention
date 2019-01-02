@@ -61,8 +61,10 @@ def createBatch(samples):
 
         #将target进行PAD，并添加END符号
         #下面缺少添加END符号,所以要添加end符号
-        target = sample[1]
-        pad = [padToken] * (max_target_length - len(target))
+        # target = sample[1]
+        target = sample[1] + [eosToken]
+        #max_target_length是sample[1]的最大长度，但是现在加了一个end符号，所以最大长度也要加1
+        pad = [padToken] * (max_target_length +1- len(target))
         batch.decoder_targets.append(target + pad)
         #batch.target_inputs.append([goToken] + target + pad[:-1])
 

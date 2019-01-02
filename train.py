@@ -18,7 +18,7 @@ tf.app.flags.DEFINE_integer('num_layers', 4, 'Number of layers in each encoder a
 tf.app.flags.DEFINE_integer('embedding_size', 1024, 'Embedding dimensions of encoder and decoder inputs')
 
 tf.app.flags.DEFINE_float('learning_rate', 0.0001, 'Learning rate')
-tf.app.flags.DEFINE_integer('batch_size', 500, 'Batch size')
+tf.app.flags.DEFINE_integer('batch_size', 7, 'Batch size')
 tf.app.flags.DEFINE_integer('numEpochs', 30, 'Maximum # of training epochs')
 tf.app.flags.DEFINE_integer('steps_per_checkpoint', 5, 'Save model checkpoint every this iteration')
 tf.app.flags.DEFINE_string('model_dir', 'model/', 'Path to save model checkpoints')
@@ -30,7 +30,7 @@ data_path='data/souhu-part3-vocabSize50000.pkl'
 word2id, id2word, trainingSamples = loadDataset(data_path)
 #id2word以下并没有使用
 
-
+print('FLAGS.rnn_size',FLAGS.rnn_size)#FLAGS.rnn_size 1024
 with tf.Session() as sess:
     model = Seq2SeqModel(FLAGS.rnn_size,
                          FLAGS.num_layers,
@@ -54,7 +54,7 @@ with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
     for each in tf.all_variables():
         print('each var',each)
-    #
+    #显示所有节点名称
     # for n in tf.get_default_graph().as_graph_def().node:
     #     print('n.name',n.name)
 

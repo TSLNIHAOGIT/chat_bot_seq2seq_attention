@@ -121,8 +121,11 @@ class Seq2SeqModel():
             output_layer = tf.layers.Dense(self.vocab_size, kernel_initializer=tf.truncated_normal_initializer(mean=0.0, stddev=0.1))
 
             if self.mode == 'train':
+                ##这里似乎只是在前面加了go,没有去除最后一个字符，也没有看到eos放在哪里
                 # 定义decoder阶段的输入，其实就是在decoder的target开始处添加一个<go>,并删除结尾处的<end>,并进行embedding。
                 # decoder_inputs_embedded的shape为[batch_size, decoder_targets_length, embedding_size]
+
+                #以tf.strided_slice(input, [0,0,0], [2,2,2], [1,2,1])调用为例,start = [0,0,0] , end = [2,2,2], stride = [1,2,1],求一个[start, end)的一个片段,注意end为开区间
                 ending = tf.strided_slice(self.decoder_targets, [0, 0], [self.batch_size, -1], [1, 1])
                 decoder_input = tf.concat([tf.fill([self.batch_size, 1], self.word_to_idx['<go>']), ending], 1)
                 decoder_inputs_embedded = tf.nn.embedding_lookup(embedding, decoder_input)
@@ -156,6 +159,9 @@ class Seq2SeqModel():
                 clip_gradients, _ = tf.clip_by_global_norm(gradients, self.max_gradient_norm)
                 self.train_op = optimizer.apply_gradients(zip(clip_gradients, trainable_params),global_step=self.global_step)
             elif self.mode == 'decode':
+
+
+                #end和start的token在这里是有标记的，判断decoder端的开始和结束位置
                 start_tokens = tf.ones([self.batch_size, ], tf.int32) * self.word_to_idx['<go>']
                 end_token = self.word_to_idx['<eos>']
                 # decoder阶段根据是否使用beam_search决定不同的组合，
