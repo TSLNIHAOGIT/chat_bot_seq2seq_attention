@@ -87,7 +87,9 @@ def createBatch(samples):
 
     for sample in samples:
         #将source进行反序并PAD值本batch的最大长度
-        source = list(reversed(sample[0]))
+        # source = list(reversed(sample[0]))
+        source = list(sample[0])
+
         pad = [padToken] * (max_source_length - len(source))
         batch.encoder_inputs.append(pad + source)
 

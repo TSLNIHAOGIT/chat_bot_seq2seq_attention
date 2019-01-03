@@ -1,8 +1,9 @@
 import tensorflow as tf
 
-# from data_helpers import loadDataset,getBatches, sentence2enco
-from data_helpers_new import loadDataset,getBatches, sentence2enco
-from model import Seq2SeqModel
+from data_helpers import loadDataset,getBatches, sentence2enco
+# from data_helpers_new import loadDataset,getBatches, sentence2enco
+# from model import Seq2SeqModel
+from model_new import Seq2SeqModel
 # from model_bidirection import Seq2SeqModel
 # from model_bidirection_diff_layer_encoder_decoder import Seq2SeqModel
 # from model_bidirection_gru import Seq2SeqModel
@@ -27,8 +28,14 @@ tf.app.flags.DEFINE_string('model_name', 'chatbot.ckpt', 'File name used for mod
 FLAGS = tf.app.flags.FLAGS
 
 # data_path = 'data/dataset-cornell-length10-filter1-vocabSize40000.pkl'
-data_path='data/souhu-part3-vocabSize50000.pkl'
+data_path='data/souhu-part1-vocabSize50000.pkl'
 word2id, id2word, trainingSamples = loadDataset(data_path)
+print('word2id',len(word2id))
+print('id2word',len(id2word))
+'''
+word2id 15187
+id2word 5000
+'''
 #id2word以下并没有使用
 
 print('FLAGS.rnn_size',FLAGS.rnn_size)#FLAGS.rnn_size 1024
@@ -48,7 +55,7 @@ with tf.Session() as sess:
     # 如果存在已经保存的模型的话，就继续训练，否则，就重新开始
     ckpt = tf.train.get_checkpoint_state(FLAGS.model_dir)
     if ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
-        print('Reloading model parameters..')
+        print('Reloading model parameters..')#lhs shape= [50000] rhs shape= [15187]
         model.saver.restore(sess, ckpt.model_checkpoint_path)
     else:
         print('Created new model parameters..')
@@ -88,7 +95,7 @@ with tf.Session() as sess:
                 tqdm.write("----- Step %d -- Loss %.2f -- Perplexity %.2f" % (current_step, loss, perplexity))
                 summary_writer.add_summary(summary, current_step)
                 checkpoint_path = os.path.join(FLAGS.model_dir, FLAGS.model_name)
-                # model.saver.save(sess, checkpoint_path, global_step=current_step)
+                model.saver.save(sess, checkpoint_path, global_step=current_step)
 
 
 '''

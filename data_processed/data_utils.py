@@ -112,6 +112,7 @@ def create_vocabulary(vocabulary_path, data_path, max_vocabulary_size,
       all_vocabs_id_dict = dict([(x, y) for (y, x) in enumerate(vocab_list)])
       print("all_vocabs_id_dict",all_vocabs_id_dict)
       joblib.dump(all_vocabs_id_dict,'all_vocabs_id_dict.pkl')
+      #高频词汇表的vocabs_id，然后构造id_vocabs;将数据转为数字时就用这两个
       # return vocab_list,all_vocabs_id_dict
 
 
@@ -151,6 +152,8 @@ def word2id_func(path):
 def id2word_func():
     word2id_dic=joblib.load( 'word2id.pkl')
     print('word2id_dic',word2id_dic)
+
+    #这里其实直接键值互换就可以，因为word2id是前n个高频词汇，id是唯一的
     #id=3对应的都是unk
     id2word={v:  k if v!=3 else _UNK for k, v in word2id_dic.items()  }
 
@@ -196,23 +199,29 @@ def final_data():
 if __name__=='__main__':
     # data_path='part3_split.parquet.gzip'
     # vocabulary_path='.'
-    #
+    # #
     # print('create_vocabulary')
-    # create_vocabulary(vocabulary_path, data_path, max_vocabulary_size=5000,
+    # create_vocabulary(vocabulary_path, data_path, max_vocabulary_size=50000,
     #                 tokenizer=None, normalize_digits=False)
     # print('go word2id')
     # word2id_func(data_path)
-    print('go id2word')
-    id2word_func()
+    # print('go id2word')
+    # id2word_func()
     # print('go rainingSamples')
     # trainingSamples_func(data_path)
     # print('go final')
     # final_data()
-    # p1='../data/souhu-part1-vocabSize50000.pkl'
-    # p2='all_vocabs_id_dict.pkl'
-    # all_vocabs_id_dict=joblib.load(p1)
-    # print(all_vocabs_id_dict['word2id'])
-    # print(all_vocabs_id_dict['id2word'])
+
+    p1='../data/souhu-part3-vocabSize50000.pkl'
+    '''
+    p1 50000,50000
+    p2 50000,50000
+    p3 15187,5000
+    '''
+    p2='all_vocabs_id_dict.pkl'
+    all_vocabs_id_dict=joblib.load(p1)
+    print(len(all_vocabs_id_dict['word2id']),'**',all_vocabs_id_dict['word2id'])
+    print(len(all_vocabs_id_dict['id2word']),'**',all_vocabs_id_dict['id2word'])
     # print('all_vocabs_id_dict',len(all_vocabs_id_dict),all_vocabs_id_dict)
     #
 
