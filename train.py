@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 from data_helpers import loadDataset,getBatches, sentence2enco
-# from data_helpers_new import loadDataset,getBatches, sentence2enco
+from data_helpers_new import loadDataset,getBatches, sentence2enco
 # from model import Seq2SeqModel
 from model_new import Seq2SeqModel
 # from model_bidirection import Seq2SeqModel

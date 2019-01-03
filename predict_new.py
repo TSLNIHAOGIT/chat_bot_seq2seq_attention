@@ -18,7 +18,7 @@ tf.app.flags.DEFINE_string('model_dir', 'model/', 'Path to save model checkpoint
 tf.app.flags.DEFINE_string('model_name', 'chatbot.ckpt', 'File name used for model checkpoints')
 FLAGS = tf.app.flags.FLAGS
 
-data_path='data/souhu-part1-vocabSize50000.pkl'
+data_path='data/souhu-part3-vocabSize50000.pkl'
 #data_path = 'data/dataset-cornell-length10-filter1-vocabSize40000.pkl'
 word2id, id2word, trainingSamples = loadDataset(data_path)
 print('loadDataset')
@@ -53,7 +53,7 @@ def predict_ids_to_seq(predict_ids, id2word, beam_szie):
 
 with tf.Session() as sess:
     model = Seq2SeqModel(FLAGS.rnn_size, FLAGS.num_layers, FLAGS.embedding_size, FLAGS.learning_rate, word2id,
-                         mode='decode', use_attention=True, beam_search=True, beam_size=30, max_gradient_norm=5.0)
+                         mode='decode', use_attention=True, beam_search=True, beam_size=10, max_gradient_norm=5.0)#beam_size和maximum_iterations相等比较合适
     # path_temp='/Users/ozintel/Downloads/Tsl_python_progect/local_ml/tensorflow_practice_from_git/nlp/chat_bot_seq2seq_attention/model'
     ckpt = tf.train.get_checkpoint_state(
         # path_temp
@@ -74,6 +74,7 @@ with tf.Session() as sess:
         # 获得预测的id
         predicted_ids = model.infer(sess, batch)
         print('predicted_ids',predicted_ids)
+        # predicted_ids.shape:(1,1,maximum_iterations,beam_size)
         # 将预测的id转换成汉字
         predict_ids_to_seq(predicted_ids, id2word, 5)
         print("> ", "")
