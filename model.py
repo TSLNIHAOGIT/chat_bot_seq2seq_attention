@@ -9,7 +9,7 @@ class Seq2SeqModel():
         self.embedding_size = embedding_size
         self.rnn_size = rnn_size
         self.num_layers = num_layers
-        self.word_to_idx = word_to_idx
+        self.word_to_idx = word_to_idx#用于获得词汇大小，self.word_to_idx['<go>'],self.word_to_idx['<eos>'];这里应该是获得的高频词汇的vocaby2id
         self.vocab_size = len(self.word_to_idx)
         self.mode = mode
         self.use_attention = use_attention

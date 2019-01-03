@@ -17,10 +17,7 @@ from sklearn.externals import joblib
 from six.moves import urllib
 
 from tensorflow.python.platform import gfile
-'''
-这里的word2id 和id2word保存是错误的
 
-'''
 # Special vocabulary symbols - we always put them at the start.
 _PAD = "<pad>"
 _GO = "<go>"
@@ -113,9 +110,14 @@ def create_vocabulary(vocabulary_path, data_path, max_vocabulary_size,
       if len(vocab_list) > max_vocabulary_size:
         vocab_list = vocab_list[:max_vocabulary_size]
       all_vocabs_id_dict = dict([(x, y) for (y, x) in enumerate(vocab_list)])
+      all_id_vocabs_dict = dict([(y, x) for (y, x) in enumerate(vocab_list)])
+
       print("all_vocabs_id_dict",all_vocabs_id_dict)
+      print('all_id_vocabs_dict',all_id_vocabs_dict)
       joblib.dump(all_vocabs_id_dict,'all_vocabs_id_dict.pkl')
+      joblib.dump(all_id_vocabs_dict,'all_id_vocabs_dict.pkl')
       #高频词汇表的vocabs_id，然后构造id_vocabs;将数据转为数字时就用这两个
+
       # return vocab_list,all_vocabs_id_dict
 
 
@@ -128,47 +130,48 @@ def create_vocabulary(vocabulary_path, data_path, max_vocabulary_size,
 
 
 
-def word2id_func(path):
-    word2id_dic={'<pad>': 0, '<go>': 1, '<eos>': 2, '<unknown>': 3}
-    all_vocabs_id_dict=joblib.load('all_vocabs_id_dict.pkl')
-    data_df=pd.read_parquet(path)
-    for index,each_row in data_df.iterrows():
-        time_start = time.time()
-        # print('开始处理第{}行数据'.format(index))
-        line=each_row['content_split']+' '+each_row['title_split']
-        # print('line',line)
-        tokens =line.strip().split(' ')
-        # print('tokens',tokens)
-        # break
-        for each_word in tokens:
-
-          ######unk
-          word2id_dic[each_word]=all_vocabs_id_dict.get(each_word, UNK_ID)
-
-        if index==10000:
-          time_end = time.time()
-          print('10000条数据耗时：{} s'.format(time_end-time_start))
-          print('总数据约耗时{} hour'.format(data_df.shape[0]/10000*(time_end-time_start)/3600 ))
-          # break
-    print(word2id_dic)
-    joblib.dump(word2id_dic,'word2id.pkl')
-def id2word_func():
-    word2id_dic=joblib.load( 'word2id.pkl')
-    print('word2id_dic',word2id_dic)
-
-    #这里其实直接键值互换就可以，因为word2id是前n个高频词汇，id是唯一的
-    #id=3对应的都是unk
-    id2word={v:  k if v!=3 else _UNK for k, v in word2id_dic.items()  }
-
-    # # #只需要对不是新词进行id2word转换，因为新词对id应的都是unk,与3对应的是一样的;然后把3对应的unk添上
-    # id2word = {v: k  for k, v in word2id_dic.items() if v != 3 }
-    # id2word[3]=_UNK
-
-    joblib.dump(id2word, 'id2word.pkl')
-    print(id2word)
+# def word2id_func(path):
+#     word2id_dic={'<pad>': 0, '<go>': 1, '<eos>': 2, '<unknown>': 3}
+#     all_vocabs_id_dict=joblib.load('all_vocabs_id_dict.pkl')
+#     data_df=pd.read_parquet(path)
+#     for index,each_row in data_df.iterrows():
+#         time_start = time.time()
+#         # print('开始处理第{}行数据'.format(index))
+#         line=each_row['content_split']+' '+each_row['title_split']
+#         # print('line',line)
+#         tokens =line.strip().split(' ')
+#         # print('tokens',tokens)
+#         # break
+#         for each_word in tokens:
+#
+#           ######unk
+#           word2id_dic[each_word]=all_vocabs_id_dict.get(each_word, UNK_ID)
+#
+#         if index==10000:
+#           time_end = time.time()
+#           print('10000条数据耗时：{} s'.format(time_end-time_start))
+#           print('总数据约耗时{} hour'.format(data_df.shape[0]/10000*(time_end-time_start)/3600 ))
+#           # break
+#     print(word2id_dic)
+#     joblib.dump(word2id_dic,'word2id.pkl')
+# def id2word_func():
+#     word2id_dic=joblib.load( 'word2id.pkl')
+#     print('word2id_dic',word2id_dic)
+#
+#     #这里其实直接键值互换就可以，因为word2id是前n个高频词汇，id是唯一的
+#     #id=3对应的都是unk
+#     id2word={v:  k if v!=3 else _UNK for k, v in word2id_dic.items()  }
+#
+#     # # #只需要对不是新词进行id2word转换，因为新词对id应的都是unk,与3对应的是一样的;然后把3对应的unk添上
+#     # id2word = {v: k  for k, v in word2id_dic.items() if v != 3 }
+#     # id2word[3]=_UNK
+#
+#     joblib.dump(id2word, 'id2word.pkl')
+#     print(id2word)
 
 def trainingSamples_func(path):
-    word2id_dic = joblib.load('word2id.pkl')
+
+    word2id_dic = joblib.load('all_vocabs_id_dict.pkl')#word2id.pkl
     print('word2id',word2id_dic)
     print(word2id_dic['本文'])
     trainingSamples=[]
@@ -190,8 +193,8 @@ def trainingSamples_func(path):
 
 def final_data():
     all_data={}
-    word2id=joblib.load('word2id.pkl')
-    id2word=joblib.load('id2word.pkl')
+    word2id=joblib.load('all_vocabs_id_dict.pkl')#word2id.pkl
+    id2word=joblib.load('all_id_vocabs_dict.pkl')#id2word.pkl
     trainingSamples=joblib.load('trainingSamples.pkl')
     all_data['word2id']=word2id
     all_data['id2word']=id2word
@@ -200,20 +203,21 @@ def final_data():
 
 
 if __name__=='__main__':
-    # data_path='part3_split.parquet.gzip'
-    # vocabulary_path='.'
-    # #
-    # print('create_vocabulary')
-    # create_vocabulary(vocabulary_path, data_path, max_vocabulary_size=50000,
-    #                 tokenizer=None, normalize_digits=False)
+    data_path='part3_split.parquet.gzip'
+    vocabulary_path='.'
+    #
+    print('create_vocabulary')
+    create_vocabulary(vocabulary_path, data_path, max_vocabulary_size=5000,
+                    tokenizer=None, normalize_digits=False)
     # print('go word2id')
     # word2id_func(data_path)
     # print('go id2word')
     # id2word_func()
-    # print('go rainingSamples')
-    # trainingSamples_func(data_path)
-    # print('go final')
-    # final_data()
+
+    print('go rainingSamples')
+    trainingSamples_func(data_path)
+    print('go final')
+    final_data()
 
     p1='../data/souhu-part3-vocabSize50000.pkl'
     '''

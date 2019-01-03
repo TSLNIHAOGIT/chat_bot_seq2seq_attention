@@ -28,7 +28,7 @@ tf.app.flags.DEFINE_string('model_name', 'chatbot.ckpt', 'File name used for mod
 FLAGS = tf.app.flags.FLAGS
 
 # data_path = 'data/dataset-cornell-length10-filter1-vocabSize40000.pkl'
-data_path='data/souhu-part1-vocabSize50000.pkl'
+data_path='data/souhu-part3-vocabSize50000.pkl'
 word2id, id2word, trainingSamples = loadDataset(data_path)
 print('word2id',len(word2id))
 print('id2word',len(id2word))
