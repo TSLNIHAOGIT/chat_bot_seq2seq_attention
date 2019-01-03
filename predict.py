@@ -1,7 +1,8 @@
 import tensorflow as tf
 from data_helpers import loadDataset, getBatches, sentence2enco
 # from data_helpers_new import loadDataset, getBatches, sentence2enco
-from model import Seq2SeqModel
+# from model import Seq2SeqModel
+from model_bidirection import Seq2SeqModel
 import sys
 import numpy as np
 
@@ -18,8 +19,8 @@ tf.app.flags.DEFINE_string('model_dir', 'model/', 'Path to save model checkpoint
 tf.app.flags.DEFINE_string('model_name', 'chatbot.ckpt', 'File name used for model checkpoints')
 FLAGS = tf.app.flags.FLAGS
 
-# data_path = 'data/dataset-cornell-length10-filter1-vocabSize40000.pkl'
-data_path='data/souhu-part3-vocabSize50000.pkl'
+data_path = 'data/dataset-cornell-length10-filter1-vocabSize40000.pkl'
+# data_path='data/souhu-part3-vocabSize50000.pkl'
 word2id, id2word, trainingSamples = loadDataset(data_path)
 
 

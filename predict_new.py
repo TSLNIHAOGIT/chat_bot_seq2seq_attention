@@ -1,7 +1,7 @@
 import tensorflow as tf
 from data_helpers_new import loadDataset, getBatches, sentence2enco
-from model_new import Seq2SeqModel
-# from model_bidirection import Seq2SeqModel
+# from model_new import Seq2SeqModel
+from model_bidirection import Seq2SeqModel
 import sys
 import numpy as np
 
@@ -11,16 +11,19 @@ tf.app.flags.DEFINE_integer('num_layers', 2, 'Number of layers in each encoder a
 tf.app.flags.DEFINE_integer('embedding_size', 1024, 'Embedding dimensions of encoder and decoder inputs')
 
 tf.app.flags.DEFINE_float('learning_rate', 0.0001, 'Learning rate')
-tf.app.flags.DEFINE_integer('batch_size', 128, 'Batch size')
+tf.app.flags.DEFINE_integer('batch_size', 7, 'Batch size')
 tf.app.flags.DEFINE_integer('numEpochs', 30, 'Maximum # of training epochs')
-tf.app.flags.DEFINE_integer('steps_per_checkpoint', 100, 'Save model checkpoint every this iteration')
+tf.app.flags.DEFINE_integer('steps_per_checkpoint', 5, 'Save model checkpoint every this iteration')
 tf.app.flags.DEFINE_string('model_dir', 'model/', 'Path to save model checkpoints')
 tf.app.flags.DEFINE_string('model_name', 'chatbot.ckpt', 'File name used for model checkpoints')
 FLAGS = tf.app.flags.FLAGS
 
-data_path='data/souhu-part3-vocabSize50000.pkl'
-#data_path = 'data/dataset-cornell-length10-filter1-vocabSize40000.pkl'
+# data_path='data/souhu-part1-vocabSize50000.pkl'
+data_path = 'data/dataset-cornell-length10-filter1-vocabSize40000.pkl'
+# data_path='.data_processed/trainingSamples3.pkl'#最原始的错误的
+
 word2id, id2word, trainingSamples = loadDataset(data_path)
+
 print('loadDataset')
 # print(word2id)
 # '''{'<pad>': 0, '<go>': 1, '<eos>': 2, '<unknown>': 3, 'can': 4, 'we': 5, 'make': 6,'''

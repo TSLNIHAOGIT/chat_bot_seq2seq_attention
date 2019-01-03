@@ -124,7 +124,7 @@ def getBatches(data, batch_size):
     '''
     #每个epoch之前都要进行样本的shuffle
     #调试时将shuffle关掉
-    # random.shuffle(data)
+    random.shuffle(data)
     # 先不shauffle看结果
 
     #
