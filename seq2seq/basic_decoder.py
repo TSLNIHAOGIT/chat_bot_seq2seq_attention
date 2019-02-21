@@ -258,15 +258,19 @@ class CopyNetDecoder(BasicDecoder):
         with ops.name_scope(name, "BasicDecoderStep", (time, inputs, state)):
             print('inputs',inputs)#inputs Tensor("decoder/decoder/while/Identity_14:0", shape=(?, 1024), dtype=float32)
 
-            #这里时AttentionWrapper的输出（使用attention时为）attention, next_state
+            #这里是AttentionWrapper的输出（使用attention时为）attention, next_state;
+            # 与attention_wraper的call调用输入一样call(self, inputs, state):
+            # 输出也一样cell_output（attention）, next_state，调用一次call方法就获得当前t的输出，和给下一步t+1用的next_state
             cell_outputs, cell_state = self._cell(inputs, state)
             print('cell_outputs',cell_outputs)#cell_outputs Tensor("decoder/decoder/while/BasicDecoderStep/decoder/Attention_Wrapper/concat_2:0", shape=(?, 1024), dtype=float32)
-            generate_scores = self._output_layer(cell_outputs)#
+            #_output_layer只是对cell_outputs（attention）加了全连接层而已，作为输出
+            generate_scores = self._output_layer(cell_outputs)
             print('generate_scores',generate_scores)
             #generate_scores Tensor("decoder/decoder/while/BasicDecoderStep/dense/BiasAdd:0", shape=(?, 15829), dtype=float32)
 
             expand_cell_outputs = tf.expand_dims(cell_outputs, 1)
 
+            # tf.tensordot(a,b,1)a的last 1 axis与b的 first 1 axis 对应元素相乘相加
             copy_scores = tf.tensordot(self.encoder_outputs, self.copy_weight, 1)
 
             print('self.encoder_outputs',self.encoder_outputs,'\n',
